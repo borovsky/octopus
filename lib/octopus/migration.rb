@@ -33,7 +33,7 @@ module Octopus::Migration
       end
     end
 
-    base.class_attribute :current_shard, :current_group, :instance_reader => false, :instance_writer => false
+    base.class_attribute :current_shard, :current_group, :all_shards, :instance_reader => false, :instance_writer => false
   end
 
   module ClassMethods
@@ -53,10 +53,19 @@ module Octopus::Migration
       self
     end
 
+    def using_all_shards
+      return self unless connection.is_a?(Octopus::Proxy)
+
+      self.all_shards = true
+      self
+    end
+
     def shards
       shards = Set.new
 
-      if groups = current_group
+      if all_shards
+        shards.merge(connection.shard_names.map(&:to_sym))
+      elsif groups = current_group
         Array.wrap(groups).each do |group|
           group_shards = connection.shards_for_group(group)
           shards.merge(group_shards) if group_shards
